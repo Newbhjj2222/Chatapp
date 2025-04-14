@@ -683,6 +683,90 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     },
     [statusList]
   );
+  
+  // Join a group using invite code
+  const joinGroup = useCallback(
+    async (groupCode: string) => {
+      if (!user) throw new Error("You must be logged in to join a group");
+      
+      try {
+        const response = await apiRequest("POST", `/api/groups/join`, { 
+          code: groupCode,
+          userId: user.uid 
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || "Failed to join group");
+        }
+        
+        const groupData = await response.json();
+        
+        // Refresh conversations list
+        fetchConversations();
+        
+        return groupData;
+      } catch (error: any) {
+        console.error("Error joining group:", error);
+        throw new Error(error.message || "Failed to join group");
+      }
+    },
+    [user, fetchConversations]
+  );
+  
+  // Generate group invite link
+  const generateGroupLink = useCallback(
+    async (chatId: number) => {
+      if (!user) throw new Error("You must be logged in to generate a group link");
+      
+      try {
+        const response = await apiRequest("GET", `/api/groups/${chatId}/invite`, undefined);
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || "Failed to generate group link");
+        }
+        
+        const linkData = await response.json();
+        return {
+          link: linkData.link,
+          code: linkData.code
+        };
+      } catch (error: any) {
+        console.error("Error generating group link:", error);
+        throw new Error(error.message || "Failed to generate group link");
+      }
+    },
+    [user]
+  );
+  
+  // Regenerate group invite link
+  const regenerateGroupLink = useCallback(
+    async (chatId: number) => {
+      if (!user) throw new Error("You must be logged in to regenerate a group link");
+      
+      try {
+        const response = await apiRequest("POST", `/api/groups/${chatId}/invite/regenerate`, {
+          userId: user.uid
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || "Failed to regenerate group link");
+        }
+        
+        const linkData = await response.json();
+        return {
+          link: linkData.link,
+          code: linkData.code
+        };
+      } catch (error: any) {
+        console.error("Error regenerating group link:", error);
+        throw new Error(error.message || "Failed to regenerate group link");
+      }
+    },
+    [user]
+  );
 
   const value = useMemo(
     () => ({
@@ -698,6 +782,9 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       sendMessage,
       sendImageMessage,
       createGroup,
+      joinGroup,
+      generateGroupLink,
+      regenerateGroupLink,
       createStatus,
       viewStatus,
       setSelectedStatusById,
@@ -715,6 +802,9 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       sendMessage,
       sendImageMessage,
       createGroup,
+      joinGroup,
+      generateGroupLink,
+      regenerateGroupLink,
       createStatus,
       viewStatus,
       setSelectedStatusById,
