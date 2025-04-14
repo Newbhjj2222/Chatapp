@@ -1,0 +1,53 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply font-sans antialiased bg-background text-foreground;
+  }
+}
+
+@layer components {
+  .chat-bubble-sent {
+    @apply rounded-tr-none rounded-tl-xl rounded-br-xl rounded-bl-xl bg-[#DCF8C6];
+  }
+  
+  .chat-bubble-received {
+    @apply rounded-tl-none rounded-tr-xl rounded-br-xl rounded-bl-xl bg-white;
+  }
+  
+  .status-circle {
+    @apply h-[60px] w-[60px] rounded-full overflow-hidden relative;
+  }
+  
+  .status-circle::after {
+    content: '';
+    @apply absolute inset-0 border-2 border-primary rounded-full;
+  }
+  
+  .status-circle-unseen::after {
+    @apply border-2 border-primary;
+  }
+  
+  .status-circle-seen::after {
+    @apply border-2 border-gray-400;
+  }
+  
+  .status-badge {
+    @apply absolute bottom-0 right-0 bg-secondary text-white h-[18px] w-[18px] text-xs flex items-center justify-center rounded-full border-2 border-white;
+  }
+  
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
