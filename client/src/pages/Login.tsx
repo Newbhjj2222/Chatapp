@@ -52,7 +52,8 @@ export default function Login() {
         title: "Login successful",
         description: "Welcome back to NetChat!",
       });
-      navigate("/");
+      // Redirect to chat page after successful login
+      navigate("/chat");
     } catch (error) {
       // Error is already handled in useAuth hook
       console.error(error);

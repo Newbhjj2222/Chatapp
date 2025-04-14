@@ -63,7 +63,8 @@ export default function Register() {
         title: "Registration successful",
         description: "Welcome to NetChat!",
       });
-      navigate("/");
+      // Redirect to chat page after successful registration
+      navigate("/chat");
     } catch (error) {
       // Error is already handled in useAuth hook
       console.error(error);

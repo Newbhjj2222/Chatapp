@@ -1,11 +1,34 @@
-import { Switch, Route, Link } from "wouter";
+import { Switch, Route, Link, useLocation, useRoute, Redirect as WouterRedirect } from "wouter";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Home from "./pages/Home";
 import NotFound from "./pages/not-found";
 import { useState, useEffect } from "react";
-import { database } from "./lib/firebase";
+import { database, auth, User } from "./lib/firebase";
 import { ref, onValue, off } from "firebase/database";
+import { useAuth } from "./hooks/useAuth";
+import { Button } from "@/components/ui/button";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { 
+  Settings, 
+  User as UserIcon, 
+  Bell, 
+  Shield, 
+  LogOut, 
+  Edit, 
+  Camera
+} from "lucide-react";
+
+// Custom redirect component to navigate to login page
+const Redirect = () => {
+  useEffect(() => {
+    window.location.href = "/login";
+  }, []);
+  
+  return null;
+};
 
 // Firebase connection status component
 function ConnectionStatus() {
@@ -48,6 +71,263 @@ function ConnectionStatus() {
          connectionStatus === 'connected' ? 'Connected to Firebase' : 
          'Disconnected'}
       </span>
+    </div>
+  );
+}
+
+// Profile page component 
+function Profile() {
+  const [location, navigate] = useLocation();
+  const { user, signOut } = useAuth();
+  const [activeTab, setActiveTab] = useState("personal");
+  const [isEditing, setIsEditing] = useState(false);
+  
+  // Handle logout and navigation
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      navigate("/login");
+    } catch (error) {
+      console.error("Failed to logout:", error);
+    }
+  };
+  
+  // Navigate to chat page
+  const goToChat = () => {
+    navigate("/chat");
+  };
+  
+  // Show loading state if user is not loaded
+  if (!user) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading profile...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  // Get user initials for avatar fallback
+  const getUserInitials = () => {
+    if (!user.displayName) return "U";
+    return user.displayName
+      .split(" ")
+      .map(part => part[0])
+      .join("")
+      .toUpperCase()
+      .substring(0, 2);
+  };
+  
+  return (
+    <div className="container max-w-4xl mx-auto py-8 px-4">
+      {/* Profile header with avatar and basic info */}
+      <Card className="mb-8">
+        <CardHeader className="pb-2">
+          <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
+            <div className="relative">
+              <Avatar className="w-24 h-24 border-4 border-background">
+                <AvatarImage src={user.photoURL || ""} alt={user.displayName || "User"} />
+                <AvatarFallback className="text-2xl bg-primary text-primary-foreground">
+                  {getUserInitials()}
+                </AvatarFallback>
+              </Avatar>
+              <button 
+                className="absolute bottom-0 right-0 bg-primary text-primary-foreground p-1.5 rounded-full"
+                aria-label="Change profile picture"
+              >
+                <Camera className="w-4 h-4" />
+              </button>
+            </div>
+            
+            <div className="text-center md:text-left">
+              <CardTitle className="text-2xl mb-1">{user.displayName || "User"}</CardTitle>
+              <CardDescription>{user.email}</CardDescription>
+              <div className="flex gap-3 mt-4 justify-center md:justify-start">
+                <Button variant="outline" size="sm" onClick={goToChat}>
+                  Back to Chat
+                </Button>
+                <Button variant="destructive" size="sm" onClick={handleLogout}>
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Logout
+                </Button>
+              </div>
+            </div>
+          </div>
+        </CardHeader>
+      </Card>
+      
+      {/* Profile tabs for different settings */}
+      <Tabs defaultValue="personal" className="w-full">
+        <TabsList className="grid grid-cols-3 mb-8">
+          <TabsTrigger value="personal" onClick={() => setActiveTab("personal")}>
+            <UserIcon className="w-4 h-4 mr-2" />
+            Personal Info
+          </TabsTrigger>
+          <TabsTrigger value="security" onClick={() => setActiveTab("security")}>
+            <Shield className="w-4 h-4 mr-2" />
+            Security
+          </TabsTrigger>
+          <TabsTrigger value="notifications" onClick={() => setActiveTab("notifications")}>
+            <Bell className="w-4 h-4 mr-2" />
+            Notifications
+          </TabsTrigger>
+        </TabsList>
+        
+        {/* Personal Info Tab */}
+        <TabsContent value="personal">
+          <Card>
+            <CardHeader>
+              <div className="flex justify-between items-center">
+                <CardTitle>Personal Information</CardTitle>
+                <Button variant="ghost" size="sm" onClick={() => setIsEditing(!isEditing)}>
+                  <Edit className="w-4 h-4 mr-2" />
+                  {isEditing ? "Cancel" : "Edit"}
+                </Button>
+              </div>
+              <CardDescription>
+                Update your personal details and how others see you in NetChat
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-4">
+                <div className="space-y-2">
+                  <div className="text-sm font-medium">Display Name</div>
+                  {isEditing ? (
+                    <input 
+                      type="text"
+                      defaultValue={user.displayName || ""} 
+                      className="w-full p-2 bg-background border rounded-md"
+                    />
+                  ) : (
+                    <div className="text-foreground">{user.displayName || "Not set"}</div>
+                  )}
+                </div>
+                
+                <div className="space-y-2">
+                  <div className="text-sm font-medium">Email Address</div>
+                  <div className="text-foreground">{user.email}</div>
+                </div>
+                
+                <div className="space-y-2">
+                  <div className="text-sm font-medium">About Me</div>
+                  {isEditing ? (
+                    <textarea 
+                      rows={3}
+                      defaultValue="Available for chats and collaboration." 
+                      className="w-full p-2 bg-background border rounded-md"
+                    />
+                  ) : (
+                    <div className="text-foreground">Available for chats and collaboration.</div>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+            
+            {isEditing && (
+              <CardFooter>
+                <Button>Save Changes</Button>
+              </CardFooter>
+            )}
+          </Card>
+        </TabsContent>
+        
+        {/* Security Tab */}
+        <TabsContent value="security">
+          <Card>
+            <CardHeader>
+              <CardTitle>Security Settings</CardTitle>
+              <CardDescription>
+                Manage your password and account security settings
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-4">
+                <div>
+                  <Button variant="outline">Change Password</Button>
+                </div>
+                
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <div className="text-sm font-medium">Two-Factor Authentication</div>
+                    <div className="text-sm text-muted-foreground">Not enabled</div>
+                  </div>
+                  <Button variant="outline">Setup 2FA</Button>
+                </div>
+                
+                <div className="space-y-2">
+                  <div className="text-sm font-medium">Account Activity</div>
+                  <div className="text-sm p-3 bg-background rounded-md">
+                    <div className="flex justify-between mb-1">
+                      <span>Last login</span>
+                      <span>Today, 10:42 AM</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>IP Address</span>
+                      <span>192.168.1.x</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        {/* Notifications Tab */}
+        <TabsContent value="notifications">
+          <Card>
+            <CardHeader>
+              <CardTitle>Notification Preferences</CardTitle>
+              <CardDescription>
+                Manage how and when NetChat will notify you
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex justify-between items-center py-2">
+                <div>
+                  <div className="font-medium">Messages</div>
+                  <div className="text-sm text-muted-foreground">Get notified about new messages</div>
+                </div>
+                <div>
+                  <input 
+                    type="checkbox" 
+                    defaultChecked 
+                    className="toggle toggle-primary" 
+                  />
+                </div>
+              </div>
+              
+              <div className="flex justify-between items-center py-2">
+                <div>
+                  <div className="font-medium">Group Activities</div>
+                  <div className="text-sm text-muted-foreground">Notifications for group updates</div>
+                </div>
+                <div>
+                  <input 
+                    type="checkbox" 
+                    defaultChecked 
+                    className="toggle toggle-primary" 
+                  />
+                </div>
+              </div>
+              
+              <div className="flex justify-between items-center py-2">
+                <div>
+                  <div className="font-medium">Status Updates</div>
+                  <div className="text-sm text-muted-foreground">Get notified when someone posts a status</div>
+                </div>
+                <div>
+                  <input 
+                    type="checkbox" 
+                    className="toggle toggle-primary" 
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
@@ -143,7 +423,10 @@ function App() {
           <Route path="/login"><Login /></Route>
           <Route path="/register"><Register /></Route>
           <Route path="/chat"><Home /></Route>
-          <Route path="/"><LandingPage /></Route>
+          <Route path="/profile"><Profile /></Route>
+          <Route path="/">
+            <Redirect />
+          </Route>
           <Route component={NotFound} />
         </Switch>
       </div>
