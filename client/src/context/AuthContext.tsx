@@ -22,28 +22,50 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      setUser(firebaseUser);
-      
-      if (firebaseUser) {
-        try {
-          // Sync with our backend
-          await apiRequest("POST", "/api/auth/session", {
-            uid: firebaseUser.uid,
-            email: firebaseUser.email,
-            displayName: firebaseUser.displayName,
-            photoURL: firebaseUser.photoURL,
-          });
-        } catch (error) {
-          console.error("Error syncing user with backend:", error);
+    console.log("Firebase auth setup - starting");
+    
+    try {
+      const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+        console.log("Auth state changed:", firebaseUser ? `User: ${firebaseUser.email}` : "No user");
+        
+        setUser(firebaseUser);
+        
+        if (firebaseUser) {
+          try {
+            // Sync with our backend
+            await apiRequest("POST", "/api/auth/session", {
+              uid: firebaseUser.uid,
+              email: firebaseUser.email,
+              displayName: firebaseUser.displayName,
+              photoURL: firebaseUser.photoURL,
+            });
+            console.log("User synced with backend successfully");
+          } catch (error) {
+            console.error("Error syncing user with backend:", error);
+          }
         }
-      }
-      
-      setLoading(false);
-    });
+        
+        setLoading(false);
+      }, (error) => {
+        console.error("Firebase auth error:", error);
+        setLoading(false);
+      });
 
-    return () => unsubscribe();
+      // Clean up function
+      return () => {
+        console.log("Auth listener unsubscribed");
+        unsubscribe();
+      };
+    } catch (error) {
+      console.error("Error setting up Firebase auth:", error);
+      setLoading(false);
+    }
   }, []);
+
+  // Debug values whenever they change
+  useEffect(() => {
+    console.log("Auth context updated:", { user: user?.email || null, loading });
+  }, [user, loading]);
 
   return (
     <AuthContext.Provider value={{ user, loading }}>
