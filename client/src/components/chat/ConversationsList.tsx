@@ -33,9 +33,18 @@ import { format } from 'date-fns';
 interface ConversationsListProps {
   onStatusClick: () => void;
   onCreateGroupClick: () => void;
+  onJoinGroupClick: () => void;
+  onShareGroupLinkClick: () => void;
+  onCreateStatusClick: () => void;
 }
 
-const ConversationsList = ({ onStatusClick, onCreateGroupClick }: ConversationsListProps) => {
+const ConversationsList = ({ 
+  onStatusClick, 
+  onCreateGroupClick,
+  onJoinGroupClick,
+  onShareGroupLinkClick,
+  onCreateStatusClick
+}: ConversationsListProps) => {
   const { user, logout } = useAuth();
   const { conversations, statuses, selectConversation, activeConversation } = useChat();
   const [searchTerm, setSearchTerm] = useState("");
@@ -117,17 +126,17 @@ const ConversationsList = ({ onStatusClick, onCreateGroupClick }: ConversationsL
                   <span>Create New Group</span>
                 </DropdownMenuItem>
                 
-                <DropdownMenuItem onClick={() => {}}>
+                <DropdownMenuItem onClick={onJoinGroupClick}>
                   <UserPlus className="mr-2 h-4 w-4" />
                   <span>Join Group</span>
                 </DropdownMenuItem>
                 
-                <DropdownMenuItem onClick={() => {}}>
+                <DropdownMenuItem onClick={onShareGroupLinkClick}>
                   <Share2 className="mr-2 h-4 w-4" />
                   <span>Share Group Link</span>
                 </DropdownMenuItem>
                 
-                <DropdownMenuItem onClick={() => {}}>
+                <DropdownMenuItem onClick={onCreateStatusClick}>
                   <MessageSquare className="mr-2 h-4 w-4" />
                   <span>New Status Update</span>
                 </DropdownMenuItem>
@@ -170,7 +179,7 @@ const ConversationsList = ({ onStatusClick, onCreateGroupClick }: ConversationsL
       {/* Status Thumbnails */}
       <div className="px-3 py-2 border-b border-neutral">
         <div className="flex space-x-3 overflow-x-auto no-scrollbar py-1">
-          <div className="flex flex-col items-center flex-shrink-0">
+          <div className="flex flex-col items-center flex-shrink-0 cursor-pointer" onClick={onCreateStatusClick}>
             <div className="status-circle relative">
               <img
                 src={user?.profileImage || DEFAULT_PROFILE_IMAGE}

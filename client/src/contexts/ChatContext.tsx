@@ -64,6 +64,9 @@ interface ChatContextType {
   sendMessage: (conversationId: number, text: string) => Promise<void>;
   sendImageMessage: (conversationId: number, file: File) => Promise<void>;
   createGroup: (name: string, memberIds: string[]) => Promise<void>;
+  joinGroup: (groupCode: string) => Promise<void>;
+  generateGroupLink: (chatId: number) => Promise<{link: string, code: string}>;
+  regenerateGroupLink: (chatId: number) => Promise<{link: string, code: string}>;
   createStatus: (content: string, imageFile?: File) => Promise<void>;
   viewStatus: (statusId: number, viewerId: string) => Promise<void>;
   setSelectedStatusById: (statusId: number) => void;

@@ -6,7 +6,11 @@ import ConversationsList from "@/components/chat/ConversationsList";
 import ChatArea from "@/components/chat/ChatArea";
 import StatusViewer from "@/components/chat/StatusViewer";
 import GroupCreationModal from "@/components/chat/GroupCreationModal";
+import JoinGroupModal from "@/components/chat/JoinGroupModal";
+import ShareGroupLinkModal from "@/components/chat/ShareGroupLinkModal";
+import CreateStatusModal from "@/components/chat/CreateStatusModal";
 import { useIsMobile as useMobile } from "@/hooks/use-mobile";
+import { Chat as ChatType } from "@/types"; 
 
 const Chat = () => {
   const { user } = useAuth();
@@ -16,6 +20,9 @@ const Chat = () => {
   const [showConversations, setShowConversations] = useState(true);
   const [showStatus, setShowStatus] = useState(false);
   const [showCreateGroup, setShowCreateGroup] = useState(false);
+  const [showJoinGroup, setShowJoinGroup] = useState(false);
+  const [showShareLink, setShowShareLink] = useState(false);
+  const [showCreateStatus, setShowCreateStatus] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -33,6 +40,7 @@ const Chat = () => {
     }
   }, [activeConversation, isMobile]);
 
+  // Status handlers
   const handleStatusClick = () => {
     setShowStatus(true);
   };
@@ -40,7 +48,16 @@ const Chat = () => {
   const handleStatusClose = () => {
     setShowStatus(false);
   };
+  
+  const handleCreateStatusClick = () => {
+    setShowCreateStatus(true);
+  };
+  
+  const handleCreateStatusClose = () => {
+    setShowCreateStatus(false);
+  };
 
+  // Group handlers
   const handleCreateGroupClick = () => {
     setShowCreateGroup(true);
   };
@@ -48,7 +65,24 @@ const Chat = () => {
   const handleCreateGroupClose = () => {
     setShowCreateGroup(false);
   };
+  
+  const handleJoinGroupClick = () => {
+    setShowJoinGroup(true);
+  };
+  
+  const handleJoinGroupClose = () => {
+    setShowJoinGroup(false);
+  };
+  
+  const handleShareGroupLinkClick = () => {
+    setShowShareLink(true);
+  };
+  
+  const handleShareGroupLinkClose = () => {
+    setShowShareLink(false);
+  };
 
+  // Navigation handlers
   const handleBackClick = () => {
     setShowConversations(true);
   };
@@ -59,6 +93,9 @@ const Chat = () => {
         <ConversationsList
           onStatusClick={handleStatusClick}
           onCreateGroupClick={handleCreateGroupClick}
+          onJoinGroupClick={handleJoinGroupClick}
+          onShareGroupLinkClick={handleShareGroupLinkClick}
+          onCreateStatusClick={handleCreateStatusClick}
         />
       )}
 
@@ -66,11 +103,29 @@ const Chat = () => {
         <ChatArea isMobile={isMobile} onBackClick={handleBackClick} />
       )}
 
+      {/* Status Modals */}
       {showStatus && <StatusViewer onClose={handleStatusClose} />}
+      
+      <CreateStatusModal 
+        isOpen={showCreateStatus}
+        onClose={handleCreateStatusClose}
+      />
 
+      {/* Group Modals */}
       <GroupCreationModal
         isOpen={showCreateGroup}
         onClose={handleCreateGroupClose}
+      />
+      
+      <JoinGroupModal
+        isOpen={showJoinGroup}
+        onClose={handleJoinGroupClose}
+      />
+      
+      <ShareGroupLinkModal
+        isOpen={showShareLink}
+        onClose={handleShareGroupLinkClose}
+        chat={activeConversation as ChatType}
       />
     </div>
   );
