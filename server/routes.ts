@@ -486,6 +486,184 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: 'Failed to mark status as viewed' });
     }
   });
+  
+  // Group invite code related endpoints
+  app.get('/api/groups/:id/invite', async (req: Request, res: Response) => {
+    try {
+      const chatId = parseInt(req.params.id);
+      
+      const authHeader = req.headers.authorization;
+      
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ message: 'Unauthorized' });
+      }
+      
+      const token = authHeader.split(' ')[1];
+      const decodedToken = await admin.auth().verifyIdToken(token);
+      const user = await storage.getUserByFirebaseUid(decodedToken.uid);
+      
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+      
+      // Check if the chat exists
+      const chat = await storage.getChat(chatId);
+      if (!chat) {
+        return res.status(404).json({ message: 'Group not found' });
+      }
+      
+      // Check if the chat is a group
+      if (chat.type !== 'group') {
+        return res.status(400).json({ message: 'Only groups can have invite links' });
+      }
+      
+      // Check if the user is a member of the group
+      const members = await storage.getChatMembers(chatId);
+      if (!members.some(member => member.userId === user.id)) {
+        return res.status(403).json({ message: 'You are not a member of this group' });
+      }
+      
+      // Generate or retrieve a unique group code
+      // In a real app, we would store codes in the database
+      // For this demo, we'll generate a code based on the group ID
+      const groupCode = `G${chatId}${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+      
+      // Create invitation link using the app's domain
+      const baseUrl = req.protocol + '://' + req.get('host');
+      const inviteLink = `${baseUrl}/join?code=${groupCode}`;
+      
+      res.json({
+        link: inviteLink,
+        code: groupCode
+      });
+    } catch (error) {
+      console.error('Error generating group invite:', error);
+      res.status(500).json({ message: 'Failed to generate group invite' });
+    }
+  });
+  
+  app.post('/api/groups/:id/invite/regenerate', async (req: Request, res: Response) => {
+    try {
+      const chatId = parseInt(req.params.id);
+      
+      const authHeader = req.headers.authorization;
+      
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ message: 'Unauthorized' });
+      }
+      
+      const token = authHeader.split(' ')[1];
+      const decodedToken = await admin.auth().verifyIdToken(token);
+      const user = await storage.getUserByFirebaseUid(decodedToken.uid);
+      
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+      
+      // Check if the chat exists
+      const chat = await storage.getChat(chatId);
+      if (!chat) {
+        return res.status(404).json({ message: 'Group not found' });
+      }
+      
+      // Check if the chat is a group
+      if (chat.type !== 'group') {
+        return res.status(400).json({ message: 'Only groups can have invite links' });
+      }
+      
+      // Check if the user is a member of the group
+      const members = await storage.getChatMembers(chatId);
+      if (!members.some(member => member.userId === user.id)) {
+        return res.status(403).json({ message: 'You are not a member of this group' });
+      }
+      
+      // Generate a new unique group code
+      const newGroupCode = `G${chatId}${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+      
+      // Create invitation link using the app's domain
+      const baseUrl = req.protocol + '://' + req.get('host');
+      const inviteLink = `${baseUrl}/join?code=${newGroupCode}`;
+      
+      res.json({
+        link: inviteLink,
+        code: newGroupCode
+      });
+    } catch (error) {
+      console.error('Error regenerating group invite:', error);
+      res.status(500).json({ message: 'Failed to regenerate group invite' });
+    }
+  });
+  
+  app.post('/api/groups/join', async (req: Request, res: Response) => {
+    try {
+      const { code } = req.body;
+      
+      const authHeader = req.headers.authorization;
+      
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ message: 'Unauthorized' });
+      }
+      
+      const token = authHeader.split(' ')[1];
+      const decodedToken = await admin.auth().verifyIdToken(token);
+      const user = await storage.getUserByFirebaseUid(decodedToken.uid);
+      
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+      
+      if (!code) {
+        return res.status(400).json({ message: 'Missing code in request body' });
+      }
+      
+      // In a real app, we would look up the code in the database
+      // For this demo, we'll extract the group ID from the code
+      if (!code.startsWith('G') || code.length < 2) {
+        return res.status(400).json({ message: 'Invalid group code' });
+      }
+      
+      // Extract chatId from the code (format: G{chatId}{random})
+      const chatIdMatch = code.match(/^G(\d+)/);
+      if (!chatIdMatch) {
+        return res.status(400).json({ message: 'Invalid group code format' });
+      }
+      
+      const chatId = parseInt(chatIdMatch[1]);
+      
+      // Check if the chat exists
+      const chat = await storage.getChat(chatId);
+      if (!chat) {
+        return res.status(404).json({ message: 'Group not found' });
+      }
+      
+      // Check if the chat is a group
+      if (chat.type !== 'group') {
+        return res.status(400).json({ message: 'Invite code is not for a group' });
+      }
+      
+      // Check if the user is already a member
+      const members = await storage.getChatMembers(chatId);
+      if (members.some(member => member.userId === user.id)) {
+        return res.status(400).json({ message: 'You are already a member of this group' });
+      }
+      
+      // Add the user to the chat
+      const member = await storage.addChatMember({
+        chatId,
+        userId: user.id,
+        isAdmin: false
+      });
+      
+      res.json({
+        success: true,
+        chat,
+        member
+      });
+    } catch (error) {
+      console.error('Error joining group:', error);
+      res.status(500).json({ message: 'Failed to join group' });
+    }
+  });
 
   return httpServer;
 }
