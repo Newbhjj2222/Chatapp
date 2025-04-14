@@ -12,42 +12,161 @@
   }
 }
 
-@layer components {
-  .chat-bubble-sent {
-    @apply rounded-tr-none rounded-tl-xl rounded-br-xl rounded-bl-xl bg-[#DCF8C6];
-  }
+:root {
+  --background: 0 0% 95%;
+  --foreground: 240 10% 4%;
   
-  .chat-bubble-received {
-    @apply rounded-tl-none rounded-tr-xl rounded-br-xl rounded-bl-xl bg-white;
-  }
+  --card: 0 0% 100%;
+  --card-foreground: 240 10% 4%;
   
-  .status-circle {
-    @apply h-[60px] w-[60px] rounded-full overflow-hidden relative;
-  }
+  --popover: 0 0% 100%;
+  --popover-foreground: 240 10% 4%;
   
-  .status-circle::after {
-    content: '';
-    @apply absolute inset-0 border-2 border-primary rounded-full;
-  }
+  --primary: 174 76% 31%;
+  --primary-foreground: 355.7 100% 97.3%;
   
-  .status-circle-unseen::after {
-    @apply border-2 border-primary;
-  }
+  --secondary: 142 76% 45%;
+  --secondary-foreground: 355.7 100% 97.3%;
   
-  .status-circle-seen::after {
-    @apply border-2 border-gray-400;
-  }
+  --muted: 240 4.8% 95.9%;
+  --muted-foreground: 240 3.8% 46.1%;
   
-  .status-badge {
-    @apply absolute bottom-0 right-0 bg-secondary text-white h-[18px] w-[18px] text-xs flex items-center justify-center rounded-full border-2 border-white;
-  }
+  --accent: 240 4.8% 95.9%;
+  --accent-foreground: 240 5.9% 10%;
   
-  .no-scrollbar::-webkit-scrollbar {
-    display: none;
-  }
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 0 0% 98%;
   
-  .no-scrollbar {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
+  --border: 240 5.9% 90%;
+  --input: 240 5.9% 90%;
+  --ring: 142 76% 45%;
+  
+  --radius: 0.5rem;
+
+  --chat-1: hsl(174, 76%, 31%);
+  --chat-2: hsl(142, 76%, 45%);
+  --chat-3: hsl(201, 76%, 45%);
+  --chat-4: hsl(278, 76%, 45%);
+  --chat-5: hsl(0, 76%, 45%);
+}
+
+.dark {
+  --background: 20 14.3% 4.1%;
+  --foreground: 0 0% 95%;
+  
+  --card: 24 9.8% 10%;
+  --card-foreground: 0 0% 95%;
+  
+  --popover: 0 0% 9%;
+  --popover-foreground: 0 0% 95%;
+  
+  --primary: 174 76% 31%;
+  --primary-foreground: 355.7 100% 97.3%;
+  
+  --secondary: 142 76% 45%;
+  --secondary-foreground: 355.7 100% 97.3%;
+  
+  --muted: 0 0% 15%;
+  --muted-foreground: 240 5% 64.9%;
+  
+  --accent: 12 6.5% 15.1%;
+  --accent-foreground: 0 0% 98%;
+  
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 0 85.7% 97.3%;
+  
+  --border: 240 3.7% 15.9%;
+  --input: 240 3.7% 15.9%;
+  --ring: 142 76% 45%;
+}
+
+/* Chat specific styles */
+.chat-height {
+  height: calc(100vh - 140px);
+}
+
+.status-height {
+  height: calc(100vh - 70px);
+}
+
+@media (min-width: 768px) {
+  .chat-height {
+    height: calc(100vh - 70px);
   }
+}
+
+.scroll-design::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scroll-design::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.scroll-design::-webkit-scrollbar-thumb {
+  background: #c5c5c5;
+  border-radius: 10px;
+}
+
+.message-input {
+  min-height: 40px;
+  max-height: 120px;
+}
+
+/* WhatsApp style chat background */
+.chat-background {
+  background-image: url('https://web.whatsapp.com/img/bg-chat-tile-light_04fcacde539c58cca6bacfedd38bec92.png');
+  background-repeat: repeat;
+  background-color: #e5ded8;
+}
+
+/* Message bubbles */
+.message-bubble-outgoing {
+  @apply bg-[#DCF8C6] text-foreground rounded-lg p-3 shadow-sm max-w-[75%];
+}
+
+.message-bubble-incoming {
+  @apply bg-white text-foreground rounded-lg p-3 shadow-sm max-w-[75%];
+}
+
+/* Status viewer progress bar */
+.status-progress {
+  @apply h-1 bg-gray-600 rounded-full overflow-hidden;
+}
+
+.status-progress-inner {
+  @apply h-full bg-white transition-all duration-100 ease-linear;
+}
+
+/* Animation for new messages */
+@keyframes message-appear {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.message-new {
+  animation: message-appear 0.3s ease-out;
+}
+
+/* Status ring animation */
+@keyframes status-ring-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.1);
+    opacity: 0.7;
+  }
+}
+
+.status-ring {
+  @apply border-2 border-primary rounded-full;
+  animation: status-ring-pulse 1.5s infinite alternate;
 }

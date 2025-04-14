@@ -1,343 +1,312 @@
 import { 
-  User, 
-  InsertUser, 
-  Conversation, 
-  InsertConversation, 
-  ConversationMember, 
-  InsertConversationMember, 
-  Message, 
-  InsertMessage, 
-  Status, 
-  InsertStatus, 
-  StatusView, 
-  InsertStatusView 
+  users, messages, chats, chatMembers, statuses,
+  User, InsertUser, Chat, InsertChat, 
+  ChatMember, InsertChatMember, Message, 
+  InsertMessage, Status, InsertStatus 
 } from "@shared/schema";
 
 // Storage interface
 export interface IStorage {
-  // User operations
+  // User methods
   getUser(id: number): Promise<User | undefined>;
-  getUserByUid(uid: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
+  getUserByFirebaseUid(uid: string): Promise<User | undefined>;
+  getUsers(): Promise<User[]>;
   createUser(user: InsertUser): Promise<User>;
-  getAllUsers(): Promise<User[]>;
   
-  // Conversation operations
-  getConversation(id: number): Promise<Conversation | undefined>;
-  createConversation(conversation: InsertConversation, memberIds: string[]): Promise<Conversation>;
-  updateConversation(id: number, updates: Partial<Conversation>): Promise<Conversation>;
-  getUserConversations(userId: string): Promise<Conversation[]>;
-  getConversationMembers(conversationId: number): Promise<ConversationMember[]>;
-  addMemberToConversation(member: InsertConversationMember): Promise<ConversationMember>;
-  removeMemberFromConversation(conversationId: number, userId: string): Promise<void>;
-  markConversationAsRead(conversationId: number, userId: string): Promise<void>;
+  // Chat methods
+  getChat(id: number): Promise<Chat | undefined>;
+  getUserChats(userId: number): Promise<Chat[]>;
+  createChat(chat: InsertChat): Promise<Chat>;
+  updateChatLastMessage(chatId: number, message: string, timestamp: Date): Promise<void>;
   
-  // Message operations
+  // Chat member methods
+  getChatMembers(chatId: number): Promise<ChatMember[]>;
+  addChatMember(member: InsertChatMember): Promise<ChatMember>;
+  removeChatMember(chatId: number, userId: number): Promise<void>;
+  
+  // Message methods
   getMessage(id: number): Promise<Message | undefined>;
+  getChatMessages(chatId: number): Promise<Message[]>;
   createMessage(message: InsertMessage): Promise<Message>;
-  getConversationMessages(conversationId: number): Promise<Message[]>;
-  markMessageAsRead(messageId: number, userId: string): Promise<void>;
   
-  // Status operations
+  // Status methods
   getStatus(id: number): Promise<Status | undefined>;
+  getStatuses(): Promise<Status[]>;
+  getUserStatuses(userId: number): Promise<Status[]>;
   createStatus(status: InsertStatus): Promise<Status>;
-  getUserStatuses(userId: string): Promise<Status[]>;
-  getAllStatuses(): Promise<Status[]>;
-  viewStatus(statusId: number, viewerId: string): Promise<void>;
+  viewStatus(statusId: number, userId: number): Promise<void>;
 }
 
-// Memory storage implementation
 export class MemStorage implements IStorage {
   private users: Map<number, User>;
-  private usersByUid: Map<string, User>;
-  private conversations: Map<number, Conversation>;
-  private conversationMembers: Map<number, ConversationMember[]>;
+  private chats: Map<number, Chat>;
+  private chatMembers: Map<number, ChatMember>;
   private messages: Map<number, Message>;
-  private messagesByConversation: Map<number, Message[]>;
   private statuses: Map<number, Status>;
-  private statusesByUser: Map<string, Status[]>;
-  private statusViews: Map<number, StatusView[]>;
   
-  private userId: number = 1;
-  private conversationId: number = 1;
-  private conversationMemberId: number = 1;
-  private messageId: number = 1;
-  private statusId: number = 1;
-  private statusViewId: number = 1;
-  
+  private userIdCounter: number;
+  private chatIdCounter: number;
+  private chatMemberIdCounter: number;
+  private messageIdCounter: number;
+  private statusIdCounter: number;
+
   constructor() {
     this.users = new Map();
-    this.usersByUid = new Map();
-    this.conversations = new Map();
-    this.conversationMembers = new Map();
+    this.chats = new Map();
+    this.chatMembers = new Map();
     this.messages = new Map();
-    this.messagesByConversation = new Map();
     this.statuses = new Map();
-    this.statusesByUser = new Map();
-    this.statusViews = new Map();
+    
+    this.userIdCounter = 1;
+    this.chatIdCounter = 1;
+    this.chatMemberIdCounter = 1;
+    this.messageIdCounter = 1;
+    this.statusIdCounter = 1;
   }
-  
-  // User operations
+
+  // User methods
   async getUser(id: number): Promise<User | undefined> {
     return this.users.get(id);
   }
-  
-  async getUserByUid(uid: string): Promise<User | undefined> {
-    return this.usersByUid.get(uid);
-  }
-  
+
   async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(user => user.username === username);
+    return Array.from(this.users.values()).find(
+      (user) => user.username === username,
+    );
   }
   
-  async createUser(userData: InsertUser): Promise<User> {
-    // Check if user already exists
-    const existingUser = await this.getUserByUid(userData.uid);
-    if (existingUser) {
-      return existingUser;
-    }
-    
-    const id = this.userId++;
-    const user: User = { ...userData, id };
-    
+  async getUserByFirebaseUid(uid: string): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(
+      (user) => user.firebaseUid === uid,
+    );
+  }
+  
+  async getUsers(): Promise<User[]> {
+    return Array.from(this.users.values());
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const id = this.userIdCounter++;
+    const createdAt = new Date();
+    const user: User = { ...insertUser, id, createdAt };
     this.users.set(id, user);
-    this.usersByUid.set(userData.uid, user);
-    
     return user;
   }
   
-  async getAllUsers(): Promise<User[]> {
-    return Array.from(this.users.values());
-  }
-  
-  // Conversation operations
-  async getConversation(id: number): Promise<Conversation | undefined> {
-    return this.conversations.get(id);
-  }
-  
-  async createConversation(conversationData: InsertConversation, memberIds: string[]): Promise<Conversation> {
-    const id = this.conversationId++;
-    const conversation: Conversation = { 
-      ...conversationData, 
-      id,
-      memberCount: memberIds.length
-    };
+  // Chat methods
+  async getChat(id: number): Promise<Chat | undefined> {
+    const chat = this.chats.get(id);
     
-    this.conversations.set(id, conversation);
-    this.conversationMembers.set(id, []);
-    
-    // Add all members to the conversation
-    for (const userId of memberIds) {
-      await this.addMemberToConversation({
-        conversationId: id,
-        userId,
-        isAdmin: userId === conversationData.createdBy
-      });
+    if (chat) {
+      // Include members
+      const members = await this.getChatMembers(id);
+      return { ...chat, members };
     }
     
-    return conversation;
+    return undefined;
   }
   
-  async updateConversation(id: number, updates: Partial<Conversation>): Promise<Conversation> {
-    const conversation = await this.getConversation(id);
-    if (!conversation) {
-      throw new Error(`Conversation with ID ${id} not found`);
-    }
+  async getUserChats(userId: number): Promise<Chat[]> {
+    // Find all chat memberships for this user
+    const memberships = Array.from(this.chatMembers.values()).filter(
+      (member) => member.userId === userId
+    );
     
-    const updatedConversation = { ...conversation, ...updates };
-    this.conversations.set(id, updatedConversation);
+    // Get all chats the user is a member of
+    const userChats: Chat[] = [];
     
-    return updatedConversation;
-  }
-  
-  async getUserConversations(userId: string): Promise<Conversation[]> {
-    const result: Conversation[] = [];
-    
-    // Check all conversation members to find the user's conversations
-    for (const [conversationId, members] of this.conversationMembers.entries()) {
-      if (members.some(member => member.userId === userId)) {
-        const conversation = await this.getConversation(conversationId);
-        if (conversation) {
-          result.push(conversation);
-        }
+    for (const membership of memberships) {
+      const chat = this.chats.get(membership.chatId);
+      
+      if (chat) {
+        // Include members
+        const members = await this.getChatMembers(membership.chatId);
+        const membersWithUsers = await Promise.all(
+          members.map(async (member) => {
+            const user = await this.getUser(member.userId);
+            return { ...member, user };
+          })
+        );
+        
+        userChats.push({ ...chat, members: membersWithUsers });
       }
     }
     
-    return result;
+    return userChats;
   }
   
-  async getConversationMembers(conversationId: number): Promise<ConversationMember[]> {
-    return this.conversationMembers.get(conversationId) || [];
+  async createChat(insertChat: InsertChat): Promise<Chat> {
+    const id = this.chatIdCounter++;
+    const createdAt = new Date();
+    const chat: Chat = { ...insertChat, id, createdAt };
+    this.chats.set(id, chat);
+    return chat;
   }
   
-  async addMemberToConversation(memberData: InsertConversationMember): Promise<ConversationMember> {
-    const id = this.conversationMemberId++;
-    const member: ConversationMember = { ...memberData, id, joinedAt: new Date() };
+  async updateChatLastMessage(chatId: number, message: string, timestamp: Date): Promise<void> {
+    const chat = this.chats.get(chatId);
     
-    const members = this.conversationMembers.get(memberData.conversationId) || [];
-    members.push(member);
-    this.conversationMembers.set(memberData.conversationId, members);
-    
-    // Update the member count in the conversation
-    const conversation = await this.getConversation(memberData.conversationId);
-    if (conversation) {
-      await this.updateConversation(memberData.conversationId, {
-        memberCount: members.length
-      });
+    if (chat) {
+      chat.lastMessage = message;
+      chat.lastMessageTime = timestamp;
+      this.chats.set(chatId, chat);
     }
+  }
+  
+  // Chat member methods
+  async getChatMembers(chatId: number): Promise<ChatMember[]> {
+    const members = Array.from(this.chatMembers.values()).filter(
+      (member) => member.chatId === chatId
+    );
     
+    // Include user data for each member
+    const membersWithUsers = await Promise.all(
+      members.map(async (member) => {
+        const user = await this.getUser(member.userId);
+        return { ...member, user };
+      })
+    );
+    
+    return membersWithUsers;
+  }
+  
+  async addChatMember(insertMember: InsertChatMember): Promise<ChatMember> {
+    const id = this.chatMemberIdCounter++;
+    const joinedAt = new Date();
+    const member: ChatMember = { ...insertMember, id, joinedAt };
+    this.chatMembers.set(id, member);
     return member;
   }
   
-  async removeMemberFromConversation(conversationId: number, userId: string): Promise<void> {
-    const members = this.conversationMembers.get(conversationId) || [];
-    const updatedMembers = members.filter(member => member.userId !== userId);
-    this.conversationMembers.set(conversationId, updatedMembers);
+  async removeChatMember(chatId: number, userId: number): Promise<void> {
+    const memberToRemove = Array.from(this.chatMembers.values()).find(
+      (member) => member.chatId === chatId && member.userId === userId
+    );
     
-    // Update the member count in the conversation
-    const conversation = await this.getConversation(conversationId);
-    if (conversation) {
-      await this.updateConversation(conversationId, {
-        memberCount: updatedMembers.length
-      });
+    if (memberToRemove) {
+      this.chatMembers.delete(memberToRemove.id);
     }
   }
   
-  async markConversationAsRead(conversationId: number, userId: string): Promise<void> {
-    const messages = await this.getConversationMessages(conversationId);
-    
-    for (const message of messages) {
-      await this.markMessageAsRead(message.id, userId);
-    }
-  }
-  
-  // Message operations
+  // Message methods
   async getMessage(id: number): Promise<Message | undefined> {
-    return this.messages.get(id);
+    const message = this.messages.get(id);
+    
+    if (message) {
+      // Include sender data
+      const sender = await this.getUser(message.senderId);
+      return { ...message, sender };
+    }
+    
+    return undefined;
   }
   
-  async createMessage(messageData: InsertMessage): Promise<Message> {
-    const id = this.messageId++;
+  async getChatMessages(chatId: number): Promise<Message[]> {
+    const chatMessages = Array.from(this.messages.values())
+      .filter((message) => message.chatId === chatId)
+      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    
+    // Include sender data for each message
+    const messagesWithSenders = await Promise.all(
+      chatMessages.map(async (message) => {
+        const sender = await this.getUser(message.senderId);
+        return { ...message, sender };
+      })
+    );
+    
+    return messagesWithSenders;
+  }
+  
+  async createMessage(insertMessage: InsertMessage): Promise<Message> {
+    const id = this.messageIdCounter++;
+    const timestamp = new Date();
     const message: Message = { 
-      ...messageData, 
-      id,
-      createdAt: new Date(),
-      readBy: messageData.senderId ? [messageData.senderId] : []
+      ...insertMessage, 
+      id, 
+      timestamp, 
+      readBy: []
     };
-    
     this.messages.set(id, message);
-    
-    // Add to conversation messages
-    const conversationMessages = this.messagesByConversation.get(messageData.conversationId) || [];
-    conversationMessages.push(message);
-    this.messagesByConversation.set(messageData.conversationId, conversationMessages);
-    
-    // Update last message in conversation
-    await this.updateConversation(messageData.conversationId, {
-      lastMessage: message.text || "Image",
-      lastMessageAt: message.createdAt
-    });
-    
     return message;
   }
   
-  async getConversationMessages(conversationId: number): Promise<Message[]> {
-    return this.messagesByConversation.get(conversationId) || [];
-  }
-  
-  async markMessageAsRead(messageId: number, userId: string): Promise<void> {
-    const message = await this.getMessage(messageId);
-    if (!message) {
-      throw new Error(`Message with ID ${messageId} not found`);
-    }
-    
-    if (message.readBy?.includes(userId)) {
-      return; // Already read
-    }
-    
-    const readBy = [...(message.readBy || []), userId];
-    const updatedMessage = { ...message, readBy };
-    
-    this.messages.set(messageId, updatedMessage);
-    
-    // Also update in the conversation messages
-    const conversationMessages = this.messagesByConversation.get(message.conversationId) || [];
-    const updatedMessages = conversationMessages.map(msg => 
-      msg.id === messageId ? updatedMessage : msg
-    );
-    this.messagesByConversation.set(message.conversationId, updatedMessages);
-  }
-  
-  // Status operations
+  // Status methods
   async getStatus(id: number): Promise<Status | undefined> {
-    return this.statuses.get(id);
+    const status = this.statuses.get(id);
+    
+    if (status) {
+      // Include user data
+      const user = await this.getUser(status.userId);
+      return { ...status, user };
+    }
+    
+    return undefined;
   }
   
-  async createStatus(statusData: InsertStatus): Promise<Status> {
-    const id = this.statusId++;
+  async getStatuses(): Promise<Status[]> {
+    // Filter out expired statuses
+    const now = new Date();
+    const activeStatuses = Array.from(this.statuses.values())
+      .filter((status) => new Date(status.expiresAt) > now)
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    
+    // Include user data for each status
+    const statusesWithUsers = await Promise.all(
+      activeStatuses.map(async (status) => {
+        const user = await this.getUser(status.userId);
+        return { 
+          ...status, 
+          user,
+          viewCount: Array.isArray(status.viewedBy) ? status.viewedBy.length : 0
+        };
+      })
+    );
+    
+    return statusesWithUsers;
+  }
+  
+  async getUserStatuses(userId: number): Promise<Status[]> {
+    const now = new Date();
+    const userStatuses = Array.from(this.statuses.values())
+      .filter((status) => status.userId === userId && new Date(status.expiresAt) > now)
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    
+    return userStatuses;
+  }
+  
+  async createStatus(insertStatus: InsertStatus): Promise<Status> {
+    const id = this.statusIdCounter++;
+    const timestamp = new Date();
+    
+    // Ensure expiresAt is a Date object
+    const expiresAt = insertStatus.expiresAt instanceof Date 
+      ? insertStatus.expiresAt 
+      : new Date(insertStatus.expiresAt);
+    
     const status: Status = { 
-      ...statusData, 
-      id,
-      createdAt: new Date(),
-      viewCount: 0,
-      viewedBy: [] 
+      ...insertStatus, 
+      id, 
+      timestamp, 
+      expiresAt, 
+      viewedBy: []
     };
     
     this.statuses.set(id, status);
-    
-    // Add to user statuses
-    const userStatuses = this.statusesByUser.get(statusData.userId) || [];
-    userStatuses.push(status);
-    this.statusesByUser.set(statusData.userId, userStatuses);
-    
     return status;
   }
   
-  async getUserStatuses(userId: string): Promise<Status[]> {
-    return this.statusesByUser.get(userId) || [];
-  }
-  
-  async getAllStatuses(): Promise<Status[]> {
-    return Array.from(this.statuses.values());
-  }
-  
-  async viewStatus(statusId: number, viewerId: string): Promise<void> {
-    const status = await this.getStatus(statusId);
-    if (!status) {
-      throw new Error(`Status with ID ${statusId} not found`);
+  async viewStatus(statusId: number, userId: number): Promise<void> {
+    const status = this.statuses.get(statusId);
+    
+    if (status) {
+      // Add user to viewedBy if not already there
+      if (!status.viewedBy.includes(userId)) {
+        status.viewedBy = [...status.viewedBy, userId];
+        this.statuses.set(statusId, status);
+      }
     }
-    
-    if (status.viewedBy?.includes(viewerId)) {
-      return; // Already viewed
-    }
-    
-    // Create a status view
-    const statusView: StatusView = {
-      id: this.statusViewId++,
-      statusId,
-      viewerId,
-      viewedAt: new Date()
-    };
-    
-    const statusViews = this.statusViews.get(statusId) || [];
-    statusViews.push(statusView);
-    this.statusViews.set(statusId, statusViews);
-    
-    // Update the status
-    const viewedBy = [...(status.viewedBy || []), viewerId];
-    const viewCount = (status.viewCount || 0) + 1;
-    const updatedStatus = { ...status, viewCount, viewedBy };
-    
-    this.statuses.set(statusId, updatedStatus);
-    
-    // Also update in the user statuses
-    const userStatuses = this.statusesByUser.get(status.userId) || [];
-    const updatedStatuses = userStatuses.map(s => 
-      s.id === statusId ? updatedStatus : s
-    );
-    this.statusesByUser.set(status.userId, updatedStatuses);
   }
 }
 
-// Export a singleton instance
 export const storage = new MemStorage();
