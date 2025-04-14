@@ -1,7 +1,20 @@
 import { useEffect, useState } from "react";
-import { Search, MoreVertical, Circle, Plus } from "lucide-react";
+import { 
+  Search, 
+  MoreVertical, 
+  Circle, 
+  Plus, 
+  UserCog, 
+  UsersRound, 
+  UserPlus, 
+  Share2, 
+  LogOut, 
+  MessageSquare, 
+  Settings as SettingsIcon
+} from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useChat } from "@/contexts/ChatContext";
+import { useLocation } from "wouter";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -9,9 +22,12 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+  DropdownMenuGroup
 } from "@/components/ui/dropdown-menu";
 import { APP_NAME, DEFAULT_PROFILE_IMAGE } from "@/lib/constants";
-import { Conversation } from "@shared/schema";
+import { Chat } from "@/types";
 import { format } from 'date-fns';
 
 interface ConversationsListProps {
@@ -23,7 +39,8 @@ const ConversationsList = ({ onStatusClick, onCreateGroupClick }: ConversationsL
   const { user, logout } = useAuth();
   const { conversations, statuses, selectConversation, activeConversation } = useChat();
   const [searchTerm, setSearchTerm] = useState("");
-  const [filteredConversations, setFilteredConversations] = useState<Conversation[]>([]);
+  const [filteredConversations, setFilteredConversations] = useState<Chat[]>([]);
+  const [, navigate] = useLocation();
 
   useEffect(() => {
     if (conversations) {
@@ -76,10 +93,62 @@ const ConversationsList = ({ onStatusClick, onCreateGroupClick }: ConversationsL
                 <MoreVertical className="h-5 w-5" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => {}}>Profile</DropdownMenuItem>
-              <DropdownMenuItem onClick={onCreateGroupClick}>New Group</DropdownMenuItem>
-              <DropdownMenuItem onClick={logout}>Logout</DropdownMenuItem>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>Menu</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              
+              <DropdownMenuGroup>
+                <DropdownMenuItem onClick={() => navigate("/profile")}>
+                  <UserCog className="mr-2 h-4 w-4" />
+                  <span>Profile</span>
+                </DropdownMenuItem>
+                
+                <DropdownMenuItem onClick={() => navigate("/settings")}>
+                  <SettingsIcon className="mr-2 h-4 w-4" />
+                  <span>Settings</span>
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
+              
+              <DropdownMenuSeparator />
+              
+              <DropdownMenuGroup>
+                <DropdownMenuItem onClick={onCreateGroupClick}>
+                  <UsersRound className="mr-2 h-4 w-4" />
+                  <span>Create New Group</span>
+                </DropdownMenuItem>
+                
+                <DropdownMenuItem onClick={() => {}}>
+                  <UserPlus className="mr-2 h-4 w-4" />
+                  <span>Join Group</span>
+                </DropdownMenuItem>
+                
+                <DropdownMenuItem onClick={() => {}}>
+                  <Share2 className="mr-2 h-4 w-4" />
+                  <span>Share Group Link</span>
+                </DropdownMenuItem>
+                
+                <DropdownMenuItem onClick={() => {}}>
+                  <MessageSquare className="mr-2 h-4 w-4" />
+                  <span>New Status Update</span>
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
+              
+              <DropdownMenuSeparator />
+              
+              <DropdownMenuItem 
+                onClick={async () => {
+                  try {
+                    await logout();
+                    navigate("/login");
+                  } catch (error) {
+                    console.error("Failed to logout:", error);
+                  }
+                }}
+                className="text-red-600 focus:text-red-600"
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Logout</span>
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

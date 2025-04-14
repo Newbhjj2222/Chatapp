@@ -12,7 +12,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
-  Settings, 
+  Settings as SettingsIcon, 
   User as UserIcon, 
   Bell, 
   Shield, 
@@ -71,6 +71,151 @@ function ConnectionStatus() {
          connectionStatus === 'connected' ? 'Connected to Firebase' : 
          'Disconnected'}
       </span>
+    </div>
+  );
+}
+
+// Settings page component
+function Settings() {
+  const [location, navigate] = useLocation();
+  const { user, signOut } = useAuth();
+  
+  // Navigate to chat page
+  const goToChat = () => {
+    navigate("/chat");
+  };
+  
+  // Show loading state if user is not loaded
+  if (!user) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading settings...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  return (
+    <div className="container max-w-4xl mx-auto py-8 px-4">
+      <Card className="mb-8">
+        <CardHeader>
+          <div className="flex justify-between items-center mb-4">
+            <CardTitle className="text-2xl">Settings</CardTitle>
+            <Button variant="outline" size="sm" onClick={goToChat}>
+              Back to Chat
+            </Button>
+          </div>
+          <CardDescription>
+            Manage your app settings and preferences
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="space-y-3">
+            <h3 className="text-lg font-medium">Account</h3>
+            <div className="grid gap-2">
+              <div className="flex justify-between items-center p-3 bg-background rounded-md">
+                <div>
+                  <div className="font-medium">Profile</div>
+                  <div className="text-sm text-muted-foreground">Update your profile information</div>
+                </div>
+                <Button variant="ghost" size="sm" onClick={() => navigate("/profile")}>
+                  <UserIcon className="w-4 h-4 mr-2" />
+                  View Profile
+                </Button>
+              </div>
+              
+              <div className="flex justify-between items-center p-3 bg-background rounded-md">
+                <div>
+                  <div className="font-medium">Security</div>
+                  <div className="text-sm text-muted-foreground">Manage password and account security</div>
+                </div>
+                <Button variant="ghost" size="sm">
+                  <Shield className="w-4 h-4 mr-2" />
+                  Manage
+                </Button>
+              </div>
+            </div>
+          </div>
+          
+          <div className="space-y-3">
+            <h3 className="text-lg font-medium">Notifications</h3>
+            <div className="grid gap-2">
+              <div className="flex justify-between items-center p-3 bg-background rounded-md">
+                <div>
+                  <div className="font-medium">Push Notifications</div>
+                  <div className="text-sm text-muted-foreground">Get notified about new messages and updates</div>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className="text-xs text-muted-foreground">On</span>
+                  <div className="w-8 h-4 bg-primary rounded-full relative">
+                    <div className="absolute top-0.5 right-0.5 w-3 h-3 bg-white rounded-full"></div>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex justify-between items-center p-3 bg-background rounded-md">
+                <div>
+                  <div className="font-medium">Email Notifications</div>
+                  <div className="text-sm text-muted-foreground">Receive email updates on important activities</div>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className="text-xs text-muted-foreground">Off</span>
+                  <div className="w-8 h-4 bg-muted rounded-full relative">
+                    <div className="absolute top-0.5 left-0.5 w-3 h-3 bg-background rounded-full"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div className="space-y-3">
+            <h3 className="text-lg font-medium">Privacy</h3>
+            <div className="grid gap-2">
+              <div className="flex justify-between items-center p-3 bg-background rounded-md">
+                <div>
+                  <div className="font-medium">Online Status</div>
+                  <div className="text-sm text-muted-foreground">Show when you're active on NetChat</div>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className="text-xs text-muted-foreground">On</span>
+                  <div className="w-8 h-4 bg-primary rounded-full relative">
+                    <div className="absolute top-0.5 right-0.5 w-3 h-3 bg-white rounded-full"></div>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex justify-between items-center p-3 bg-background rounded-md">
+                <div>
+                  <div className="font-medium">Read Receipts</div>
+                  <div className="text-sm text-muted-foreground">Let others know when you've read their messages</div>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className="text-xs text-muted-foreground">On</span>
+                  <div className="w-8 h-4 bg-primary rounded-full relative">
+                    <div className="absolute top-0.5 right-0.5 w-3 h-3 bg-white rounded-full"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div className="pt-4 border-t">
+            <Button variant="destructive" onClick={async () => {
+              try {
+                await signOut();
+                navigate("/login");
+              } catch (error) {
+                console.error("Failed to logout:", error);
+              }
+            }}>
+              <LogOut className="w-4 h-4 mr-2" />
+              Logout
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
@@ -392,44 +537,21 @@ const LandingPage = () => {
 };
 
 function App() {
-  const [showStatusBar, setShowStatusBar] = useState(true);
+  const { user } = useAuth();
   
   return (
     <>
-      {showStatusBar && (
-        <div className="fixed top-0 left-0 right-0 bg-card/90 backdrop-blur-sm border-b text-foreground p-2 text-center z-50">
-          <div className="flex items-center justify-between container mx-auto max-w-7xl px-4">
-            <div className="flex items-center gap-2">
-              <strong className="text-primary">NetChat</strong>
-              <span className="text-xs">Connected to Firebase Project: netchat-81f3f</span>
-            </div>
-            
-            <div className="flex items-center gap-4">
-              <ConnectionStatus />
-              
-              <button 
-                onClick={() => setShowStatusBar(false)}
-                className="bg-secondary/20 hover:bg-secondary/30 text-secondary-foreground text-xs px-2 py-1 rounded"
-              >
-                Dismiss
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      
-      <div className={showStatusBar ? "pt-12" : ""}>
-        <Switch>
-          <Route path="/login"><Login /></Route>
-          <Route path="/register"><Register /></Route>
-          <Route path="/chat"><Home /></Route>
-          <Route path="/profile"><Profile /></Route>
-          <Route path="/">
-            <Redirect />
-          </Route>
-          <Route component={NotFound} />
-        </Switch>
-      </div>
+      <Switch>
+        <Route path="/login"><Login /></Route>
+        <Route path="/register"><Register /></Route>
+        <Route path="/chat"><Home /></Route>
+        <Route path="/profile"><Profile /></Route>
+        <Route path="/settings"><Settings /></Route>
+        <Route path="/">
+          <Redirect />
+        </Route>
+        <Route component={NotFound} />
+      </Switch>
     </>
   );
 }
