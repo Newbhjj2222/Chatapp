@@ -1,11 +1,58 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, Link } from "wouter";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Home from "./pages/Home";
 import NotFound from "./pages/not-found";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { database } from "./lib/firebase";
+import { ref, onValue, off } from "firebase/database";
 
-// Simple NetChat landing page that doesn't rely on Firebase or WebSockets
+// Firebase connection status component
+function ConnectionStatus() {
+  const [connectionStatus, setConnectionStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking');
+  
+  useEffect(() => {
+    // Reference to the Firebase connection status
+    const connectedRef = ref(database, '.info/connected');
+    
+    // Listen for connection changes
+    onValue(connectedRef, (snap) => {
+      if (snap.val() === true) {
+        setConnectionStatus('connected');
+      } else {
+        setConnectionStatus('disconnected');
+      }
+    }, (error) => {
+      console.error('Connection check error:', error);
+      setConnectionStatus('disconnected');
+    });
+    
+    // Clean up listener
+    return () => {
+      off(connectedRef);
+    };
+  }, []);
+  
+  // Render different indicators based on connection status
+  const statusColors = {
+    checking: "bg-yellow-500",
+    connected: "bg-green-500",
+    disconnected: "bg-red-500"
+  };
+  
+  return (
+    <div className="flex items-center gap-2">
+      <div className={`w-3 h-3 rounded-full ${statusColors[connectionStatus]} animate-pulse`}></div>
+      <span className="text-xs">
+        {connectionStatus === 'checking' ? 'Checking connection...' : 
+         connectionStatus === 'connected' ? 'Connected to Firebase' : 
+         'Disconnected'}
+      </span>
+    </div>
+  );
+}
+
+// Simple NetChat landing page
 const LandingPage = () => {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-background to-muted p-4">
@@ -20,18 +67,18 @@ const LandingPage = () => {
         </div>
         
         <div className="grid md:grid-cols-2 gap-4 max-w-md mx-auto">
-          <a 
+          <Link 
             href="/login" 
             className="flex items-center justify-center bg-primary hover:bg-primary/90 text-primary-foreground py-3 px-4 rounded-md font-medium shadow-sm"
           >
             Sign In
-          </a>
-          <a 
+          </Link>
+          <Link 
             href="/register" 
             className="flex items-center justify-center bg-secondary hover:bg-secondary/90 text-secondary-foreground py-3 px-4 rounded-md font-medium shadow-sm"
           >
             Create Account
-          </a>
+          </Link>
         </div>
         
         <div className="grid gap-6 md:grid-cols-3 mt-12">
@@ -65,31 +112,41 @@ const LandingPage = () => {
 };
 
 function App() {
-  const [showDemoAlert, setShowDemoAlert] = useState(true);
+  const [showStatusBar, setShowStatusBar] = useState(true);
   
   return (
     <>
-      {showDemoAlert && (
-        <div className="fixed top-0 left-0 right-0 bg-primary/90 text-primary-foreground p-2 text-center z-50">
-          <div className="flex items-center justify-center gap-2">
-            <span>Demo Mode: Firebase authentication is configured but not connected</span>
-            <button 
-              onClick={() => setShowDemoAlert(false)}
-              className="bg-primary-foreground text-primary text-xs px-2 py-1 rounded-full"
-            >
-              Dismiss
-            </button>
+      {showStatusBar && (
+        <div className="fixed top-0 left-0 right-0 bg-card/90 backdrop-blur-sm border-b text-foreground p-2 text-center z-50">
+          <div className="flex items-center justify-between container mx-auto max-w-7xl px-4">
+            <div className="flex items-center gap-2">
+              <strong className="text-primary">NetChat</strong>
+              <span className="text-xs">Connected to Firebase Project: netchat-81f3f</span>
+            </div>
+            
+            <div className="flex items-center gap-4">
+              <ConnectionStatus />
+              
+              <button 
+                onClick={() => setShowStatusBar(false)}
+                className="bg-secondary/20 hover:bg-secondary/30 text-secondary-foreground text-xs px-2 py-1 rounded"
+              >
+                Dismiss
+              </button>
+            </div>
           </div>
         </div>
       )}
       
-      <Switch>
-        <Route path="/login"><Login /></Route>
-        <Route path="/register"><Register /></Route>
-        <Route path="/chat"><Home /></Route>
-        <Route path="/"><LandingPage /></Route>
-        <Route component={NotFound} />
-      </Switch>
+      <div className={showStatusBar ? "pt-12" : ""}>
+        <Switch>
+          <Route path="/login"><Login /></Route>
+          <Route path="/register"><Register /></Route>
+          <Route path="/chat"><Home /></Route>
+          <Route path="/"><LandingPage /></Route>
+          <Route component={NotFound} />
+        </Switch>
+      </div>
     </>
   );
 }
